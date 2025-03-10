@@ -85,6 +85,7 @@ async function onMention(message) {
 
     for (let index = 0; index < urls.length; index++) {
         const url = urls[index];
+        console.log(url);
         try {
             const originalTitle = await insertPage(url, pageId);
             await message.channel.send(`「${originalTitle}」の要約が完了しました！`);
