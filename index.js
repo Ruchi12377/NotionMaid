@@ -1,20 +1,11 @@
 import 'dotenv/config'
-import { Client as NotionClient } from "@notionhq/client";
-import { markdownToBlocks } from '@tryfabric/martian';
-import { Client as DiscordClient, Events, GatewayIntentBits } from "discord.js";
-import { getContentByUrl } from "./util/getContentByUrl.js";
-import { hasUrlInMessage } from "./util/hasUrlInMessage.js";
-import { summarizeText } from "./util/summarizeText.js";
-
+import { Client as DiscordClient, Events, GatewayIntentBits, REST, Routes } from "discord.js";
+import { closeDb, deleteNotionConfig, insertNotionConfig, setupDb } from './util/db.js';
+import { getNotionPageIdByServerId } from './util/db.js';
+import { extractAllUrls } from './util/extractAllUrls.js';
+import { insertPage } from './util/insertPage.js';
 // Get the tokens from the environment variables
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const NOTION_PAGE_ID = process.env.NOTION_PAGE_ID;
-
-// Initialize the Notion client
-const notion = new NotionClient({
-    auth: NOTION_TOKEN,
-});
 
 // Create a new Discord client instance
 const client = new DiscordClient({
@@ -25,8 +16,30 @@ const client = new DiscordClient({
     ],
 });
 
+const commands = [
+    {
+        name: "register",
+        description: "Register the Notion page ID for this server",
+        options: [
+            {
+                name: "pageid",
+                type: 3, // STRING
+                description: "The Notion page ID to set",
+                required: true
+            }
+        ]
+    },
+    {
+        name: "unregister",
+        description: "Unregister the Notion page ID for this server"
+    }
+];
+
 // When the client is ready, run this code
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async (readyClient) => {
+    setupDb();
+    await client.application.commands.set(commands, readyClient.guildId);
+
     console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
@@ -41,45 +54,61 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
+// Listen for and handle slash command interactions
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === "register") {
+        const pageId = interaction.options.getString("pageid");
+        insertNotionConfig(interaction.guildId, pageId);
+        await interaction.reply("Notion page ID has been successfully configured");
+    } else if (interaction.commandName === "unregister") {
+        deleteNotionConfig(interaction.guildId);
+        await interaction.reply("Notion page ID removed");
+    }
+});
+
 // Handle mentions of the bot
 async function onMention(message) {
-    const url = hasUrlInMessage(message.content);
+    const urls = extractAllUrls(message.content);
 
-    // If there's no URL in the message, do nothing
-    if (!url) return;
+    // If there are no URLs in the message, do nothing
+    if (urls.length === 0) return;
 
-    try {
-        const { title: originalTitle, markdown } = await getContentByUrl(url);
+    // Get the Notion page ID associated with this Discord server
+    const pageId = await getNotionPageIdByServerId(message.guild.id);
 
-        const { title, tags, content } = await summarizeText(markdown);
-        const tagMd = `📝 ${tags.split(",").map((tag) => `\`${tag.trim()}\``).join(" ")}`;
-        const urlMd = `🌏 [要約元リンク](${url})`;
-        const blocks = markdownToBlocks(`${tagMd}\n${urlMd}\n${content}`);
+    if (pageId == null) {
+        await message.channel.send("Notion page ID not found");
+        return;
+    }
 
-        await notion.pages.create({
-            parent: { page_id: NOTION_PAGE_ID },
-            properties: {
-                title: [
-                    { text: { content: title } }
-                ],
-            },
-            children: blocks
-        });
-
-        await message.channel.send(`「${originalTitle}」の要約が完了しました！`);
-    } catch (error) {
-        console.error(error);
-        await message.channel.send(`An error occurred: ${error}`);
+    for (let index = 0; index < urls.length; index++) {
+        const url = urls[index];
+        console.log(url);
+        try {
+            const originalTitle = await insertPage(url, pageId);
+            await message.channel.send(`「${originalTitle}」の要約が完了しました！`);
+        } catch (error) {
+            console.error(error);
+            await message.channel.send(`「${originalTitle}」の要約に失敗しました。`);
+        }
     }
 }
 
 // Log in to Discord with your client's token
 try {
     if (DISCORD_TOKEN) {
-        client.login(DISCORD_TOKEN);
+        await client.login(DISCORD_TOKEN);
     } else {
         throw new Error("DISCORD_TOKEN environment variable not set.");
     }
 } catch (error) {
     console.error(`An error occurred: ${error}`);
 }
+
+// Add a signal listener that closes the DB upon termination
+process.on("SIGINT", () => {
+    closeDb();
+    process.exit(0);
+});

@@ -2,6 +2,7 @@
   "name": "notionmaid",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
@@ -22,10 +23,12 @@
     "@mozilla/readability": "^0.6.0",
     "@tryfabric/martian": "^1.2.4",
     "axios": "^1.8.2",
+    "crypto": "^1.0.1",
     "discord.js": "^14.11.0",
     "dotenv": "^16.4.7",
     "jsdom": "^26.0.0",
     "showdown": "^2.1.0",
+    "sqlite3": "^5.1.7",
     "turndown": "^7.2.0"
   }
 }
