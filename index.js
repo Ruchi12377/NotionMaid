@@ -90,7 +90,7 @@ async function onMention(message) {
             await message.channel.send(`「${originalTitle}」の要約が完了しました！`);
         } catch (error) {
             console.error(error);
-            await message.channel.send(`「${originalTitle}」の要約に失敗しました。`);
+            await message.channel.send(`[記事](${url}) の要約に失敗しました。`);
         }
     }
 }

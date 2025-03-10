@@ -16,29 +16,25 @@ export async function insertPage(url, pageId) {
         throw new Error("Notion page ID not found");
     }
 
-    try {
-        const { title: originalTitle, markdown } = await getContentByUrl(url);
+    const { title: originalTitle, markdown } = await getContentByUrl(url);
 
-        const { title, tags, content } = await summarizeText(markdown);
-        const tagMd = `📝 ${tags.split(",").map((tag) => `\`${tag.trim()}\``).join(" ")}`;
-        const urlMd = `🌏 [要約元リンク](${url})`;
-        const blocks = markdownToBlocks(`${tagMd}\n${urlMd}\n${content}`);
+    if (markdown === "") throw new Error("Failed to get content from URL");
 
-        await notion.pages.create({
-            parent: { page_id: pageId },
-            properties: {
-                title: [
-                    { text: { content: title } }
-                ],
-            },
-            children: blocks
-        });
+    const { title, tags, content } = await summarizeText(markdown);
+    const tagMd = `📝 ${tags.split(",").map((tag) => `\`${tag.trim()}\``).join(" ")}`;
+    const urlMd = `🌏 [要約元リンク](${url})`;
+    const blocks = markdownToBlocks(`${tagMd}\n${urlMd}\n${content}`);
 
+    await notion.pages.create({
+        parent: { page_id: pageId },
+        properties: {
+            title: [
+                { text: { content: title } }
+            ],
+        },
+        children: blocks
+    });
 
-        return originalTitle;
-    } catch (error) {
-        console.error(error);
-    }
 
     return originalTitle;
 }

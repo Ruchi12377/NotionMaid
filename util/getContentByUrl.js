@@ -20,7 +20,7 @@ export async function getContentByUrl(url) {
         const article = reader.parse();
 
         if (!article) {
-            return { title: "", markdown: "" };
+            return { title: "記事が見つかりませんでした。", markdown: "" };
         }
 
         const turndownService = new TurndownService();
