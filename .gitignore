@@ -130,3 +130,5 @@ dist
 .pnp.*
 
 notion_maid.db
+
+.DS_Store
