@@ -25,7 +25,6 @@ export async function fetchChatGPTContent(url) {
 
         // Find all article elements
         const articles = await driver.findElements(By.css("article"));
-        console.log(`Found ${articles.length} article elements`);
 
         // Extract conversation turn number and create sortable pairs [number, element]
         const articlePairs = [];
@@ -53,8 +52,10 @@ export async function fetchChatGPTContent(url) {
         let combinedContent = "";
         for (const [_turnNumber, article] of articlePairs) {
             const content = await article.getText();
-            combinedContent += `${content}\n\n`
-            // combinedContent += `--- Turn ${turnNumber} ---\n${content}\n\n`;
+            const firstLine = content.split("\n")[0];
+            const icon = firstLine.includes("You said:") ? "👤" : "🤖";
+            const remainingLines = content.split("\n").slice(1).join("\n");
+            combinedContent += `${icon} ${remainingLines}\n\n`
         }
 
         return combinedContent;

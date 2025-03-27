@@ -17,7 +17,8 @@ export function closeDb() {
 export function insertNotionConfig(serverId, notionPageId) {
     const hashedServerId = hashServerId(serverId);
     const encryptedNotionPageId = encrypt(notionPageId, serverId);
-    console.log(encryptedNotionPageId)
+    console.log(encryptedNotionPageId);
+    console.log(decrypt(encryptedNotionPageId, serverId));
 
     db.run(
         `INSERT INTO notionConfig (serverId, notionPageId)

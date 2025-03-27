@@ -19,16 +19,16 @@ export async function insertPage(url, pageId) {
     }
 
     if (url.startsWith("https://chatgpt.com/share")) {
-        return chatGPT(url);
+        return chatGPT(url, pageId);
     }
 
-    return otherSites(url);
+    return otherSites(url, pageId);
 }
 
-async function chatGPT(url) {
+async function chatGPT(url, pageId) {
     const conversation = await fetchChatGPTContent(url);
 
-    const title = getTitleAboutConversation(conversation);
+    const { title } = await getTitleAboutConversation(conversation);
     const urlMd = `🌏 [要約元リンク](${url})`;
     const blocks = markdownToBlocks(`${urlMd}\n${conversation}`);
 
@@ -42,10 +42,10 @@ async function chatGPT(url) {
         children: blocks
     });
 
-    return "ChatGPT";
+    return title;
 }
 
-async function otherSites(url) {
+async function otherSites(url, pageId) {
     const { title: originalTitle, markdown } = await getContentByUrl(url);
 
     if (markdown === "") throw new Error("Failed to get content from URL");
